@@ -8,6 +8,7 @@ from scipy.spatial.distance import pdist, squareform
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from scipy.cluster.hierarchy import dendrogram, linkage, cophenet, inconsistent, fcluster
 import numpy as np
+import csv
 
 class ClusterByUrl:
 
@@ -139,6 +140,15 @@ class ClusterByUrl:
             clustoids.append(id_sublist[i])
         return clustoids
 
+    @staticmethod
+    def append_to_csv_file(ids, url):
+        data = []
+        for id in ids:
+            data.append([url, id])
+        with open('data/ids-urls.txt', newline='', mode='a+', encoding='utf-8') as csvfile:
+            writer = csv.writer(csvfile, quoting=csv.QUOTE_NONNUMERIC, lineterminator='\n')
+            writer.writerows(data)
+
 
 if __name__ == '__main__':
     np.set_printoptions(precision=6, suppress=True)
@@ -191,7 +201,7 @@ if __name__ == '__main__':
             clustoids = ClusterByUrl.compute_clustoids(squareform(dists), ids, clusters)
 
             # append to csv file for later import
-
+            ClusterByUrl.append_to_csv_file(clustoids, url)
 
             print("yey")
 
