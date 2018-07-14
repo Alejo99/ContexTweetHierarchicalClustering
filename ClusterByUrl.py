@@ -3,18 +3,21 @@ from builtins import staticmethod
 import requests
 from matplotlib import pyplot as plt
 from sklearn.feature_extraction.text import TfidfVectorizer
-from scipy.sparse import csr_matrix, hstack, vstack
-from scipy.spatial.distance import pdist, squareform
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-from scipy.cluster.hierarchy import dendrogram, linkage, cophenet, inconsistent, fcluster
+from sklearn.metrics import adjusted_rand_score, adjusted_mutual_info_score, v_measure_score
+from scipy.sparse import csr_matrix, hstack
+from scipy.spatial.distance import pdist, squareform
+from scipy.cluster.hierarchy import dendrogram, linkage, fcluster
 import numpy as np
 import csv
+import json
+
 
 class ClusterByUrl:
 
     @staticmethod
     def get_tfidf_features(corpus):
-        tfidf_vec = TfidfVectorizer(stop_words='english', ngram_range=(1, 3))
+        tfidf_vec = TfidfVectorizer(ngram_range=(1, 3))
         return tfidf_vec.fit_transform(corpus)
 
     @staticmethod
@@ -49,19 +52,10 @@ class ClusterByUrl:
         return matrix
 
     @staticmethod
-    def custom_metric(u, v, weight_tw=0.2, weight_tfidf=0.8):
-        x_tw = np.stack((u[0:2], v[0:2]))
-        x_tfidf = np.stack((u[2:], v[2:]))
-        dist_tw = pdist(x_tw, 'sqeuclidean')
-        dist_tfidf = pdist(x_tfidf, 'cosine')
-        ret = (dist_tw * weight_tw) + (dist_tfidf * weight_tfidf)
-        return ret
-
-    @staticmethod
-    def custom_distances(tw_feats, tfidf_feats):
-        dist_tw = ClusterByUrl.get_tweet_distances(tweet_feats)
+    def custom_distances(tw_feats, tfidf_feats, weight_tw=0.1, weight_tfidf=0.9):
+        dist_tw = ClusterByUrl.get_tweet_distances(tw_feats)
         dist_tfidf = ClusterByUrl.get_tfidf_distances(tfidf_feats)
-        dists = (dist_tw * 0.2) + (dist_tfidf * 0.8)
+        dists = (dist_tw * weight_tw) + (dist_tfidf * weight_tfidf)
         return dists
 
     @staticmethod
@@ -79,15 +73,16 @@ class ClusterByUrl:
         f.show()
 
     @staticmethod
-    def calc_n_clusters(z, i, plot_graph=False):
+    def calc_n_clusters(z, i=0, plot_graph=False):
         '''
         From https://goo.gl/SaqES2
-        :param z: The linkage matrix
+        :param z: The linkage matrix.
+        :param i: The index to include in the graph title.
         :param plot_graph: True to plot observations and acceleration in a graph, False otherwise.
-        :return: the number of clusters according to the elbow method
+        :return: the number of clusters according to the elbow method.
         '''
-        # calculate based on the last 10 clusters
-        last = z[-10:, 2]
+        # calculate based on the distance from the last 15 mergings
+        last = z[-15:, 2]
 
         # 2nd derivative of the distance
         acceleration = np.diff(last, 2)
@@ -103,7 +98,6 @@ class ClusterByUrl:
             plt.plot(idxs, last_rev)
             plt.plot(idxs[:-2], acceleration_rev)
             g.show()
-
         k = acceleration_rev.argmax() + 2  # if idx 0 is the max of this we want 2 clusters
         return k
 
@@ -157,6 +151,7 @@ if __name__ == '__main__':
     urls_resp = requests.get("http://localhost:65500/tweets/urls")
     urls = urls_resp.json()
     print(str(len(urls)) + " urls")
+
     # for each url
     for url in urls:
         # query tweets by url
@@ -164,6 +159,8 @@ if __name__ == '__main__':
         tweets = tweets_resp.json()
         n_tweets = len(tweets)
         print(str(n_tweets) + " tweets for url " + url)
+
+        # if the url has more than 10 tweets, apply clustering
         if n_tweets > 10:
             # get ordered ids and texts
             ids = [tweet["id"] for tweet in tweets]
@@ -174,27 +171,26 @@ if __name__ == '__main__':
             tweet_feats = ClusterByUrl.get_tweet_features(tweets)
             # combine features
             feats = hstack([tweet_feats, tfidf_feats])
+
             # compute and combine distances
             dists = ClusterByUrl.custom_distances(tweet_feats, tfidf_feats)
-            # perform hierarchical clustering
-            #Z1 = linkage(feats.A, method='average', metric=ClusterByUrl.custom_metric)
-            Z = linkage(dists, method='average')
 
-            # plot dendrograms
-            #ClusterByUrl.plot_dendrogram(Z1, 1)
+            # perform hierarchical clustering
+            Z = linkage(dists, method='complete')
+
+            # uncomment this line to plot dendrograms
+            # careful! it plots len(url) dendrograms!
             #ClusterByUrl.plot_dendrogram(Z, 2)
 
             # find k by elbow method
-            #k1 = ClusterByUrl.calc_n_clusters(Z1, 1)
             k = ClusterByUrl.calc_n_clusters(Z, 2)
-            print("clusters: ", k)
+            print("number of clusters: ", k)
 
             # cluster observations according to k
-            #clusters1 = fcluster(Z1, k1, 'maxclust')
             clusters = fcluster(Z, k, 'maxclust')
 
-            # visualise clusters
-            #ClusterByUrl.visualise_clusters(feats.A, 1, clusters1)
+            # uncomment this line to plot clusters
+            # careful! it plots len(url) graphs
             #ClusterByUrl.visualise_clusters(feats.A, 2, clusters)
 
             # calculate clustoids
@@ -203,5 +199,4 @@ if __name__ == '__main__':
             # append to csv file for later import
             ClusterByUrl.append_to_csv_file(clustoids, url)
 
-            print("yey")
-
+    print("Finished")
