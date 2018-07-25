@@ -4,13 +4,11 @@ import requests
 from matplotlib import pyplot as plt
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-from sklearn.metrics import adjusted_rand_score, adjusted_mutual_info_score, v_measure_score
 from scipy.sparse import csr_matrix, hstack
 from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import dendrogram, linkage, fcluster
 import numpy as np
 import csv
-import json
 
 
 class ClusterByUrl:
@@ -81,8 +79,8 @@ class ClusterByUrl:
         :param plot_graph: True to plot observations and acceleration in a graph, False otherwise.
         :return: the number of clusters according to the elbow method.
         '''
-        # calculate based on the distance from the last 15 mergings
-        last = z[-15:, 2]
+        # calculate based on the distance from the last 10 mergings
+        last = z[-10:, 2]
 
         # 2nd derivative of the distance
         acceleration = np.diff(last, 2)
@@ -148,14 +146,15 @@ if __name__ == '__main__':
     np.set_printoptions(precision=6, suppress=True)
 
     # query all distinct urls
-    urls_resp = requests.get("http://localhost:65500/tweets/urls")
+    urls_resp = requests.get("http://localhost:65500/urls")
     urls = urls_resp.json()
     print(str(len(urls)) + " urls")
 
     # for each url
     for url in urls:
         # query tweets by url
-        tweets_resp = requests.post("http://localhost:65500/tweets/byurl", json=url)
+        params = {'url': url}
+        tweets_resp = requests.get("http://localhost:65500/tweets/byurl", params=params)
         tweets = tweets_resp.json()
         n_tweets = len(tweets)
         print(str(n_tweets) + " tweets for url " + url)
@@ -173,7 +172,7 @@ if __name__ == '__main__':
             feats = hstack([tweet_feats, tfidf_feats])
 
             # compute and combine distances
-            dists = ClusterByUrl.custom_distances(tweet_feats, tfidf_feats)
+            dists = ClusterByUrl.custom_distances(tweet_feats, tfidf_feats, 0.1, 0.9)
 
             # perform hierarchical clustering
             Z = linkage(dists, method='complete')

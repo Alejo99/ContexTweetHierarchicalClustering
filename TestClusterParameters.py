@@ -1,7 +1,8 @@
 from builtins import staticmethod
 
 import requests
-from sklearn.metrics import adjusted_rand_score, adjusted_mutual_info_score, v_measure_score
+from sklearn.metrics import adjusted_rand_score, adjusted_mutual_info_score, v_measure_score, fowlkes_mallows_score
+from sklearn.metrics import f1_score
 from scipy.cluster.hierarchy import linkage, fcluster
 import numpy as np
 import ClusterByUrl
@@ -55,11 +56,13 @@ if __name__ == '__main__':
         v_measure_results = TestClusterParameters.get_results_dict(urls)
         adj_rand_results = TestClusterParameters.get_results_dict(urls)
         adj_mutual_info_results = TestClusterParameters.get_results_dict(urls)
+        fowlkes_mallows_results = TestClusterParameters.get_results_dict(urls)
 
         # for each url
         for url in urls:
             # query tweets by url using the ContexTweet Back-End API
-            tweets_resp = requests.post("http://localhost:65500/tweets/byurl", json=url)
+            params = {'url': url}
+            tweets_resp = requests.get("http://localhost:65500/tweets/byurl", params=params)
             tweets = tweets_resp.json()
             n_tweets = len(tweets)
 
@@ -92,16 +95,19 @@ if __name__ == '__main__':
                 v_measure = v_measure_score(json_urls[url], clusters)
                 adj_rand = adjusted_rand_score(json_urls[url], clusters)
                 adj_mutual_info = adjusted_mutual_info_score(json_urls[url], clusters)
+                fowlkes_mallows = fowlkes_mallows_score(json_urls[url], clusters)
 
                 # add results to the dictionaries, add parameter k in the method name for reference
                 v_measure_results[url][method + "- k=" + str(k)] = v_measure
                 adj_rand_results[url][method + "- k=" + str(k)] = adj_rand
                 adj_mutual_info_results[url][method + "- k=" + str(k)] = adj_mutual_info
+                fowlkes_mallows_results[url][method + "- k=" + str(k)] = fowlkes_mallows
 
         # after processing all the urls, determine the best method for each evaluation score!
         method_vmeasures = TestClusterParameters.select_method(methods, v_measure_results)
         method_adjrands = TestClusterParameters.select_method(methods, adj_rand_results)
         method_adjmutinf = TestClusterParameters.select_method(methods, adj_mutual_info_results)
+        method_fowlkesmallows = TestClusterParameters.select_method(methods, fowlkes_mallows_results)
 
         print("Results for weights " + str(w_tw) + " - " + str(w_tfidf))
         print("v measures")
@@ -110,4 +116,6 @@ if __name__ == '__main__':
         print(method_adjrands)
         print("adjusted mutual information")
         print(method_adjmutinf)
+        print("fowlkes mallows index")
+        print(method_fowlkesmallows)
         print("-------------------------------------------")
