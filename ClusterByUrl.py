@@ -160,7 +160,7 @@ if __name__ == '__main__':
         print(str(n_tweets) + " tweets for url " + url)
 
         # if the url has more than 10 tweets, apply clustering
-        if n_tweets > 10:
+        if n_tweets > 7:
             # get ordered ids and texts
             ids = [tweet["id"] for tweet in tweets]
             texts = [tweet["text"] for tweet in tweets]
@@ -172,7 +172,7 @@ if __name__ == '__main__':
             feats = hstack([tweet_feats, tfidf_feats])
 
             # compute and combine distances
-            dists = ClusterByUrl.custom_distances(tweet_feats, tfidf_feats, 0.1, 0.9)
+            dists = ClusterByUrl.custom_distances(tweet_feats, tfidf_feats, 0.15, 0.85)
 
             # perform hierarchical clustering
             Z = linkage(dists, method='complete')

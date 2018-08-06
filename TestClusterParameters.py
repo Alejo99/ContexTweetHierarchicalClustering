@@ -2,7 +2,6 @@ from builtins import staticmethod
 
 import requests
 from sklearn.metrics import adjusted_rand_score, adjusted_mutual_info_score, v_measure_score, fowlkes_mallows_score
-from sklearn.metrics import f1_score
 from scipy.cluster.hierarchy import linkage, fcluster
 import numpy as np
 import ClusterByUrl
