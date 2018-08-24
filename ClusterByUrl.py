@@ -15,7 +15,7 @@ class ClusterByUrl:
 
     @staticmethod
     def get_tfidf_features(corpus):
-        tfidf_vec = TfidfVectorizer(ngram_range=(1, 3))
+        tfidf_vec = TfidfVectorizer(ngram_range=(1, 2))
         return tfidf_vec.fit_transform(corpus)
 
     @staticmethod
@@ -172,10 +172,10 @@ if __name__ == '__main__':
             feats = hstack([tweet_feats, tfidf_feats])
 
             # compute and combine distances
-            dists = ClusterByUrl.custom_distances(tweet_feats, tfidf_feats, 0.15, 0.85)
+            dists = ClusterByUrl.custom_distances(tweet_feats, tfidf_feats, 0.1, 0.9)
 
             # perform hierarchical clustering
-            Z = linkage(dists, method='complete')
+            Z = linkage(dists, method='single')
 
             # uncomment this line to plot dendrograms
             # careful! it plots len(url) dendrograms!
